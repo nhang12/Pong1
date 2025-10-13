@@ -1,0 +1,52 @@
+:root {
+  --bg: #000;
+  --ink: #fff;
+  --border: #666;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.4 system-ui, sans-serif;
+}
+
+/* Controls above the canvas */
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: .6rem;
+  margin-bottom: 1rem;
+}
+.btn, select {
+  background: #000;
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .35rem .6rem;
+  cursor: pointer;
+}
+.btn:hover, select:hover { border-color: #aaa; }
+
+/* Canvas playfield */
+canvas {
+  width: 900px;
+  height: 520px;
+  background: #000;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  display: block;
+}
+
+/* Footer hint */
+.hint {
+  margin-top: .75rem;
+  color: #bbb;
+  font-size: .85rem;
+  text-align: center;
+}
