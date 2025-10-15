@@ -1,0 +1,215 @@
+ v<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pong — Black & White (AI Difficulty)</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="controls">
+    <button id="startBtn" class="btn">Start / Pause</button>
+    <button id="resetBtn" class="btn">Reset</button>
+    <button id="aiToggleBtn" class="btn">AI: ON</button>
+    <label class="btn">Speed
+      <select id="speedSelect">
+        <option value="1">1x</option>
+        <option value="1.25">1.25x</option>
+        <option value="1.5" selected>1.5x</option>
+        <option value="2">2x</option>
+      </select>
+    </label>
+    <div class="menu">
+      <button id="menuBtn" class="btn">Settings ▾</button>
+      <div id="menuPanel" class="menu-panel" hidden>
+        <div class="menu-group">
+          <strong>Mechanics</strong>
+          <label class="menu-row" style="grid-template-columns:auto 1fr; gap:.5rem;">
+            <input type="checkbox" id="breakingBad" />
+            <span>Breaking Bad (paddles shrink on hit)</span>
+          </label>
+          <label class="menu-row" id="bbControls" hidden>
+            Shrink per hit
+            <span>
+              <input type="range" id="shrinkPerHit" min="1" max="12" step="1" value="4" />
+              <span class="kv" id="shrinkVal">4</span>px
+            </span>
+          </label>
+          <label class="menu-row" id="bbMinRow" hidden>
+            Min height
+            <span>
+              <input type="range" id="minPaddleHeight" min="20" max="120" step="1" value="40" />
+              <span class="kv" id="minVal">40</span>px
+            </span>
+          </label>
+        </div>
+
+        <div class="menu-group">
+          <strong>AI Difficulty</strong>
+          <label class="menu-row">
+            Level
+            <span>
+              <input type="range" id="aiDifficulty" min="1" max="10" step="1" value="5" />
+              <span class="kv" id="aiDiffVal">5</span>
+            </span>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <canvas id="game" width="900" height="520"></canvas>
+  <div class="hint">W/S · ↑/↓ · Space – Play/Pause · R – Reset</div>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+
+    const startBtn = document.getElementById('startBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const aiToggleBtn = document.getElementById('aiToggleBtn');
+    const speedSelect = document.getElementById('speedSelect');
+
+    const menuBtn = document.getElementById('menuBtn');
+    const menuPanel = document.getElementById('menuPanel');
+    const breakingBadEl = document.getElementById('breakingBad');
+    const bbControls = document.getElementById('bbControls');
+    const bbMinRow = document.getElementById('bbMinRow');
+    const shrinkPerHitEl = document.getElementById('shrinkPerHit');
+    const minPaddleHeightEl = document.getElementById('minPaddleHeight');
+    const shrinkVal = document.getElementById('shrinkVal');
+    const minVal = document.getElementById('minVal');
+    const aiDiffSlider = document.getElementById('aiDifficulty');
+    const aiDiffVal = document.getElementById('aiDiffVal');
+
+    const BASE_PADDLE_H = 90;
+
+    let settings = {
+      speedMul: parseFloat(speedSelect.value),
+      ai: true,
+      breakingBad: false,
+      shrinkPerHit: 4,
+      minPaddleHeight: 40,
+      aiDifficulty: 5,
+    };
+
+    const left = { x: 20, y: H/2 - BASE_PADDLE_H/2, w: 14, h: BASE_PADDLE_H, color: '#fff' };
+    const right = { x: W - 34, y: H/2 - BASE_PADDLE_H/2, w: 14, h: BASE_PADDLE_H, color: '#fff' };
+    const ball = { x: W/2, y: H/2, r: 8, dx: 0, dy: 0 };
+
+    let running = false, lastTime = 0, leftScore = 0, rightScore = 0;
+
+    const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+    const randSign = ()=>Math.random()<0.5?-1:1;
+
+    function serve(dir=randSign()){
+      ball.x=W/2; ball.y=H/2;
+      const ang=(Math.random()*0.6-0.3);
+      const spd=4*settings.speedMul;
+      ball.dx=Math.cos(ang)*spd*dir;
+      ball.dy=Math.sin(ang)*(spd*0.8);
+    }
+
+    function reset(){
+      leftScore=rightScore=0;
+      left.h = right.h = BASE_PADDLE_H;
+      left.y=H/2-left.h/2; right.y=H/2-right.h/2;
+      serve(randSign());
+    }
+
+    function aiMove(dt){
+      if(!settings.ai) return;
+      const movingRight = ball.dx>0;
+      if(!(movingRight && ball.x>W*0.55)) return;
+      const difficultyFactor = settings.aiDifficulty / 10;
+      const reactionDelay = (1 - difficultyFactor) * 12; // more delay at low diff
+      const error = (1 - difficultyFactor) * 150; // bigger aim error at low diff
+      if (Math.random() < 1 / reactionDelay) {
+        const aimY=ball.y+(Math.random()-0.5)*error;
+        const maxSpeed=2.5*settings.speedMul*difficultyFactor;
+        const delta=clamp(aimY-right.h/2-right.y,-maxSpeed,maxSpeed);
+        right.y=clamp(right.y+delta,0,H-right.h);
+      }
+    }
+
+    function handleInput(){
+      const pad=7*settings.speedMul;
+      if(keys.has('KeyW')) left.y-=pad;
+      if(keys.has('KeyS')) left.y+=pad;
+      if(keys.has('ArrowUp')) right.y-=pad;
+      if(keys.has('ArrowDown')) right.y+=pad;
+      left.y=clamp(left.y,0,H-left.h);
+      right.y=clamp(right.y,0,H-right.h);
+    }
+
+    const keys=new Set();
+    addEventListener('keydown',e=>{keys.add(e.code);if(e.code==='Space')running=!running;if(e.code==='KeyR'){reset();running=false;}});
+    addEventListener('keyup',e=>keys.delete(e.code));
+
+    function shrinkPaddle(p){
+      if(!settings.breakingBad) return;
+      const oldH = p.h;
+      p.h = Math.max(settings.minPaddleHeight, p.h - settings.shrinkPerHit);
+      const center = p.y + oldH/2;
+      p.y = clamp(center - p.h/2, 0, H - p.h);
+    }
+
+    function update(dt){
+      handleInput(); aiMove(dt);
+      ball.x+=ball.dx; ball.y+=ball.dy;
+      if(ball.y-ball.r<=0&&ball.dy<0){ball.dy*=-1;}
+      if(ball.y+ball.r>=H&&ball.dy>0){ball.dy*=-1;}
+      function collide(p){
+        if(ball.x-ball.r<p.x+p.w&&ball.x+ball.r>p.x&&ball.y+ball.r>p.y&&ball.y-ball.r<p.y+p.h){
+          const hit=(ball.y-(p.y+p.h/2))/(p.h/2);
+          const ang=hit*(Math.PI/3.5);
+          const dir=(p===left)?1:-1;
+          const spd=Math.min(Math.hypot(ball.dx,ball.dy)*1.05,14*settings.speedMul);
+          ball.dx=Math.cos(ang)*spd*dir; ball.dy=Math.sin(ang)*spd;
+          if(dir===1) ball.x=p.x+p.w+ball.r+0.1; else ball.x=p.x-ball.r-0.1;
+          shrinkPaddle(p);
+        }
+      }
+      collide(left); collide(right);
+      if(ball.x+ball.r<0){rightScore++;serve(1);}else if(ball.x-ball.r>W){leftScore++;serve(-1);}
+    }
+
+    function render(){
+      ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
+      ctx.strokeStyle='#666';ctx.setLineDash([8,16]);ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(W/2,0);ctx.lineTo(W/2,H);ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle='#fff';ctx.fillRect(left.x,left.y,left.w,left.h);ctx.fillRect(right.x,right.y,right.w,right.h);
+      ctx.beginPath();ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);ctx.fill();
+      ctx.font='700 42px system-ui';ctx.textAlign='center';ctx.fillText(leftScore,W*0.25,60);ctx.fillText(rightScore,W*0.75,60);
+      if(!running){ctx.fillText('Press Space to Play',W/2,H/2);}
+    }
+
+    function loop(ts){const dt=(ts-lastTime)/16.6;lastTime=ts;if(running)update(dt);render();requestAnimationFrame(loop);}    
+
+    startBtn.onclick=()=>running=!running;
+    resetBtn.onclick=()=>{reset();running=false;};
+    aiToggleBtn.onclick=()=>{settings.ai=!settings.ai;aiToggleBtn.textContent=settings.ai?'AI: ON':'AI: OFF';};
+    speedSelect.onchange=e=>settings.speedMul=parseFloat(e.target.value);
+
+    menuBtn.onclick=(e)=>{ e.stopPropagation(); menuPanel.hidden = !menuPanel.hidden; };
+    document.addEventListener('click',(e)=>{
+      if(!menuPanel.hidden && !menuPanel.contains(e.target) && e.target!==menuBtn){ menuPanel.hidden = true; }
+    });
+
+    breakingBadEl.onchange=(e)=>{
+      settings.breakingBad = e.target.checked;
+      bbControls.hidden = bbMinRow.hidden = !settings.breakingBad;
+    };
+    shrinkPerHitEl.oninput=(e)=>{ settings.shrinkPerHit = parseInt(e.target.value,10); shrinkVal.textContent = settings.shrinkPerHit; };
+    minPaddleHeightEl.oninput=(e)=>{ settings.minPaddleHeight = parseInt(e.target.value,10); minVal.textContent = settings.minPaddleHeight; };
+
+    aiDiffSlider.oninput=(e)=>{
+      settings.aiDifficulty = parseInt(e.target.value,10);
+      aiDiffVal.textContent = settings.aiDifficulty;
+    };
+
+    reset();
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
