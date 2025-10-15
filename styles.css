@@ -1,8 +1,11 @@
 :root {
-  --bg: #000;
-  --ink: #fff;
-  --border: #666;
+  --bg-top: #0a0a0a;
+  --bg-bottom: #1c1c1c;
+  --ink: #ffffff;
+  --border: #555;
+  --accent: #4fa3f7;
 }
+
 * { box-sizing: border-box; }
 html, body { height: 100%; }
 body {
@@ -11,7 +14,7 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: var(--bg);
+  background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
   color: var(--ink);
   font: 16px/1.4 system-ui, sans-serif;
 }
@@ -23,30 +26,58 @@ body {
   gap: .6rem;
   margin-bottom: 1rem;
 }
+
 .btn, select {
-  background: #000;
+  background: #111;
   color: var(--ink);
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: .35rem .6rem;
   cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
 }
-.btn:hover, select:hover { border-color: #aaa; }
+.btn:hover, select:hover { background: #222; border-color: var(--accent); }
 
 /* Canvas playfield */
 canvas {
   width: 900px;
   height: 520px;
-  background: #000;
+  background: linear-gradient(180deg, #0e0e0e, #191919);
   border: 1px solid var(--border);
   border-radius: 6px;
   display: block;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
 /* Footer hint */
 .hint {
   margin-top: .75rem;
-  color: #bbb;
+  color: #aaa;
   font-size: .85rem;
   text-align: center;
+}
+
+/* Menu styles */
+.menu { position: relative; }
+.menu-panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: #111;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: .5rem;
+  margin-top: .3rem;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  z-index: 10;
+}
+.menu-group { border: 1px dashed var(--border); border-radius: 6px; padding: .5rem; margin-bottom: .5rem; }
+.menu-group strong { display: block; margin-bottom: .3rem; color: var(--accent); font-size: .9rem; }
+.menu-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: .5rem; color: #ccc; font-size: .9rem; }
+.menu-row input[type="range"] { width: 140px; }
+.kv { color: var(--ink); }
+
+@media (max-width: 640px) {
+  canvas { width: 100%; height: auto; }
+  .controls { flex-wrap: wrap; }
 }
